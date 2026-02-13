@@ -1,0 +1,54 @@
+# Virtual environment
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Environment variables
+.env
+.env.local
+
+# VS Code
+.vscode/
+
+# PyCharm
+.idea/
+
+# Windows
+Thumbs.db
+.DS_Store
+
+# Data files (add these for your OCR project)
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# Generated letter data files
+letter_*.json
+
+# Model files (if you're training models)
+*.pkl
+*.h5
+*.pt
+*.pth
+models/*.pkl
+models/*.h5
+models/*.pt
+models/*.pth
+
+# Logs
+*.log
+logs/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
