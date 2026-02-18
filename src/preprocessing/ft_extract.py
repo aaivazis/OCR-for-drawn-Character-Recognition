@@ -16,40 +16,8 @@ def open_json(json_name: str):
 
 
 def extract(strokes: List[List[Tuple[float, float, float]]]) -> List[np.ndarray]:
-    """
-    Run preprocessing (normalize -> resampling -> smoothing) per stroke.
-
-    Args:
-        strokes: list of strokes, each stroke is a list of (x, y, t) tuples
-
-    Returns:
-        List of numpy arrays, one per stroke, each of shape (N, 3)
-        with columns [x_processed, y_processed, t_processed].
-        Stroke order is preserved and strokes are not mixed.
-    """
-    processed_strokes: List[np.ndarray] = []
+    normalized_strokes = normalize_coordinates(strokes)
+    sampled_strokes = resampling(normalized_strokes, N_total = 64)
+    smoothed_strokes = smoothing(sampled_strokes)
     
-    #find global min, max points so normalization remains same for all strokes
-    all_raw_points = np.vstack([np.array(s) for s in strokes if s])
-    x_min, x_max = all_raw_points[:, 0].min(), all_raw_points[:, 0].max()
-    y_min, y_max = all_raw_points[:, 1].min(), all_raw_points[:, 1].max()
-
-    for stroke in strokes:
-        # stroke: list of (x, y, t)
-        if not stroke:
-            continue
-
-        stroke_points = np.array(stroke)
-        x = stroke_points[:, 0]
-        y = stroke_points[:, 1]
-        t = stroke_points[:, 2]
-
-        # Normalization, resampling, smoothing per stroke
-        x_n, y_n, t_n = normalize_coordinates(x, y, t, x_min, x_max, y_min, y_max)
-        x_s, y_s, t_s = resampling(x_n, y_n, t_n)
-        x_sm, y_sm, t_sm = smoothing(x_s, y_s, t_s)
-
-        # Stack back to (N, 3) array of x,y,t 
-        processed_strokes.append(np.column_stack((x_sm, y_sm, t_sm)))
-
-    return processed_strokes
+    return smoothed_strokes

@@ -1,19 +1,26 @@
+from typing import List
 import numpy as np
 from scipy.signal import savgol_filter
 
 #use of Savgol filter to smoothe rough edges, better result in curvature estimation
-def smoothing(x: np.ndarray, y: np.ndarray, t: np.ndarray, window_length: int = 7, polyorder: int = 2):
-    n = len(x)
-    if n < 3:
-        return x, y, t
+def smoothing(strokes: List[np.array], window_length: int = 7, polyorder: int = 2)->List[np.array]:
+    smoothed_list = []
 
-    # window must be odd and <= n
-    w = min(window_length, n if n % 2 == 1 else n - 1)
-    if w < 3:
-        return x, y, t
+    for stroke in strokes:
+        n_points = len(stroke)
+        if n_points < window_length:
+            dynamic_window = n_points if n_points % 2 == 1 else n_points - 1
+            if dynamic_window < 3:
+                smoothed_list.append(stroke)
+                continue
+            w = dynamic_window
+        else:
+            w = window_length
 
-    p = min(polyorder, w - 1)
-    x_s = savgol_filter(x, window_length=w, polyorder=p)
-    y_s = savgol_filter(y, window_length=w, polyorder=p)
+        x_sm = savgol_filter(stroke[:, 0], window_length=w, polyorder=polyorder)
+        y_sm = savgol_filter(stroke[:, 1], window_length=w, polyorder=polyorder)
+        t_sm = stroke[:, 2] 
 
-    return x_s, y_s, t
+        smoothed_list.append(np.column_stack((x_sm, y_sm, t_sm)))
+
+    return smoothed_list

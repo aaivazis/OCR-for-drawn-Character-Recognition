@@ -1,35 +1,48 @@
 import numpy as np
-from typing import List, Tuple
+from typing import List
 
-def resampling(x, y, t, N=64):
-    #arr = np.array([point for stroke in strokes for point in stroke])
+def resampling(strokes: List[np.ndarray], N_total: int = 64) -> List[np.ndarray]:
+    stroke_lengths = []
+    for s in strokes:
+        if len(s) < 2:
+            stroke_lengths.append(0.0)
+        else:
+            dx = np.diff(s[:, 0])
+            dy = np.diff(s[:, 1])
+            stroke_lengths.append(np.sum(np.sqrt(dx**2 + dy**2)))
     
-    if len(x)==0 or len(y)==0:
-        return x,y,t
+    total_char_length = sum(stroke_lengths)
+    resampled_list = []
     
-    if len(x)==1 or len(y)==1 or N<=1:
-        return np.full(N, x[0]), np.full(N, y[0]), np.linspace(t[0], t[0], N)
+    if total_char_length == 0:
+        n_per_stroke = N_total // len(strokes)
+        for s in strokes:
+            resampled_list.append(np.full((n_per_stroke, 3), s[0]))
+        return resampled_list
+
+    points_per_stroke = []
+    for length in stroke_lengths:
+        n = max(2, int(round((length / total_char_length) * N_total)))
+        points_per_stroke.append(n)
         
-    L = stroke_length(x, y)
-    Delta = L / (N-1)
-    
-    s = np.concatenate(([0.0], np.cumsum(L)))
-    total = s[-1]
+    diff = N_total - sum(points_per_stroke)
+    if diff != 0:
+        points_per_stroke[np.argmax(stroke_lengths)] += diff
 
-    if total == 0.0:
-        return np.full(N, x[0]), np.full(N, y[0]), np.linspace(t[0], t[-1], N)    
-    
-    s_new = s_new = np.linspace(0.0, total, N)
-    x_new = np.interp(s_new, s, x)
-    y_new = np.interp(s_new, s, y)
-    t_new = np.interp(s_new, s, t)
-    
-    return x_new, y_new, t_new
+    for i, stroke in enumerate(strokes):
+        n_samples = points_per_stroke[i]
+        x, y, t = stroke[:, 0], stroke[:, 1], stroke[:, 2]
         
-
-
-def stroke_length(x, y):
-    dx = np.diff(x)
-    dy = np.diff(y)
-    
-    return np.sqrt(dx**2 + dy**2)
+        dists = np.sqrt(np.diff(x)**2 + np.diff(y)**2)
+        s_cumulative = np.concatenate(([0.0], np.cumsum(dists)))
+        total_s = s_cumulative[-1]
+        
+        s_new = np.linspace(0.0, total_s, n_samples)
+        
+        x_new = np.interp(s_new, s_cumulative, x)
+        y_new = np.interp(s_new, s_cumulative, y)
+        t_new = np.interp(s_new, s_cumulative, t)
+        
+        resampled_list.append(np.column_stack((x_new, y_new, t_new)))
+        
+    return resampled_list
