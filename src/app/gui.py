@@ -3,7 +3,7 @@ import time
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QPushButton
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPainter, QPen, QColor, QPainterPath
-from export import save_strokes_to_json
+from src.app.export import save_strokes_to_json
 
 
 class DrawingCanvas(QWidget):
