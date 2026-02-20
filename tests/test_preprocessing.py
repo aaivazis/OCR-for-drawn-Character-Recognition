@@ -10,7 +10,6 @@ def plot_preprocessed_characters(results, num_samples=9, cols=3):
     samples_to_plot = results[:num_samples]
     n = len(samples_to_plot)
     
-    # Υπολογισμός απαραίτητων σειρών
     rows = math.ceil(n / cols)
     
     fig, axes = plt.subplots(rows, cols, figsize=(cols * 4, rows * 4))
@@ -47,7 +46,7 @@ def plot_preprocessed_characters(results, num_samples=9, cols=3):
 
     
 
-results = extract_all_from_csv("data/training/cap_e.csv")
+results = extract_all_from_csv("data/training/cap_iota_cleaned.csv")
 plot_preprocessed_characters(results, num_samples=65, cols=6)
 
 

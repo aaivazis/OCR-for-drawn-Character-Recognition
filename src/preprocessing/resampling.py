@@ -3,6 +3,7 @@ from typing import List
 
 def resampling(strokes: List[np.ndarray], N_total: int = 64) -> List[np.ndarray]:
     stroke_lengths = []
+    #calculate stroke length
     for s in strokes:
         if len(s) < 2:
             stroke_lengths.append(0.0)
@@ -11,6 +12,7 @@ def resampling(strokes: List[np.ndarray], N_total: int = 64) -> List[np.ndarray]
             dy = np.diff(s[:, 1])
             stroke_lengths.append(np.sum(np.sqrt(dx**2 + dy**2)))
     
+    #take the sum of all lengths odf the strokes
     total_char_length = sum(stroke_lengths)
     resampled_list = []
     
@@ -19,6 +21,7 @@ def resampling(strokes: List[np.ndarray], N_total: int = 64) -> List[np.ndarray]
         for s in strokes:
             resampled_list.append(np.full((n_per_stroke, 3), s[0]))
         return resampled_list
+
 
     points_per_stroke = []
     for length in stroke_lengths:
@@ -33,10 +36,12 @@ def resampling(strokes: List[np.ndarray], N_total: int = 64) -> List[np.ndarray]
         n_samples = points_per_stroke[i]
         x, y, t = stroke[:, 0], stroke[:, 1], stroke[:, 2]
         
+        #calculate new cumulative length
         dists = np.sqrt(np.diff(x)**2 + np.diff(y)**2)
         s_cumulative = np.concatenate(([0.0], np.cumsum(dists)))
         total_s = s_cumulative[-1]
         
+        #give points to the new length
         s_new = np.linspace(0.0, total_s, n_samples)
         
         x_new = np.interp(s_new, s_cumulative, x)

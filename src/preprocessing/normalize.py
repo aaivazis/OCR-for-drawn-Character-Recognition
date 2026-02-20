@@ -6,9 +6,9 @@ from typing import List, Tuple
 
 
 def normalize_coordinates(strokes:List[List[Tuple[float, float, float]]]) -> List[np.ndarray]:
+    #takes as argument the list of strokes so ownership of stroke points is not lost
     #find range to avoid division with 0
     normalized_strokes = []
-    
     all_raw_points = np.vstack([np.array(s) for s in strokes if s])
     x_min, x_max = all_raw_points[:, 0].min(), all_raw_points[:, 0].max()
     y_min, y_max = all_raw_points[:, 1].min(), all_raw_points[:, 1].max()
@@ -25,6 +25,7 @@ def normalize_coordinates(strokes:List[List[Tuple[float, float, float]]]) -> Lis
         x_norm = (x - x_min) / x_range
         y_norm = (y - y_min) / y_range
         
+        #returns normalized strokes with the same order
         normalized_strokes.append(np.column_stack((x_norm, y_norm, t)))
         
     return normalized_strokes

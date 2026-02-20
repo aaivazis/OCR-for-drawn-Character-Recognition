@@ -6,34 +6,29 @@ from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 
-
+#callable that takes a numpy array and returns a numpy array
 FeatureFn = Callable[[np.ndarray], np.ndarray]
 
-
+#dataclass used to return two forms of the same data
+#- stroke_codes: list of 1D arrays; each array is the sequence of cluster IDs
+# for that stroke, preserving point order.
+# - flat_codes: optional single 1D array with separator tokens inserted between strokes.
 @dataclass(frozen=True)
 class DiscretizationResult:
-    """
-    Holds discretized sequences for one character.
-
-    - stroke_codes: list of 1D arrays; each array is the sequence of cluster IDs
-    for that stroke, preserving point order.
-    - flat_codes: optional single 1D array with separator tokens inserted between strokes.
-    """
-
     stroke_codes: List[np.ndarray]
     flat_codes: Optional[np.ndarray] = None
-    
+
+#dataclass used to return the scaler and kmeans model
 @dataclass(frozen=True)
 class Codebook:
     scaler: StandardScaler
     kmeans: KMeans
 
-
+#iterates through the strokes and yields the features
 def _iter_stroke_features(
     results: Sequence[Tuple[object, Sequence[np.ndarray]]],
     feature_fn: FeatureFn,
 ) -> Iterable[np.ndarray]:
-    """Yield feature arrays for every stroke in every (char, strokes) item."""
     for _char, strokes in results:
         for stroke in strokes:
             if stroke is None or len(stroke) == 0:
@@ -43,17 +38,14 @@ def _iter_stroke_features(
                 continue
             yield feats
 
-
+#builds the codebook
 def build_codebook(
     results: Sequence[Tuple[object, Sequence[np.ndarray]]],
     n_clusters: int = 64,
     feature_fn: Optional[FeatureFn] = None,
     random_state: int = 0,
 ) -> Pipeline:
-    """
-    Fit a single codebook (StandardScaler + KMeans) over all points.
-    Returns a sklearn Pipeline so scaling is applied consistently at predict time too.
-    """
+    #if no feature function is provided, use the default one
     if feature_fn is None:
         feature_fn = lambda s: s[:, :3]
 
@@ -70,19 +62,17 @@ def build_codebook(
     model.fit(X)
     return model
 
-
+#discretizes the strokes
 def discretize_strokes(
     strokes: Sequence[np.ndarray],
     model: Pipeline,
     feature_fn: Optional[FeatureFn] = None,
 ) -> List[np.ndarray]:
-    """
-    Discretize each stroke into an ordered sequence of cluster IDs
-    using the same scaling + kmeans model.
-    """
+    #if no feature function is provided, use the default one
     if feature_fn is None:
         feature_fn = lambda s: s[:, :3]
 
+    #list to store the stroke codes
     stroke_codes: List[np.ndarray] = []
     for stroke in strokes:
         if stroke is None or len(stroke) == 0:
@@ -92,14 +82,12 @@ def discretize_strokes(
         stroke_codes.append(codes.astype(np.int32, copy=False))
     return stroke_codes
 
-
+#flattens the stroke codes with separators
 def flatten_with_separators(
     stroke_codes: Sequence[np.ndarray],
     sep_token: int,
 ) -> np.ndarray:
-    """
-    Concatenate stroke code sequences into one sequence and insert sep_token between strokes.
-    """
+    #if no stroke codes are provided, return an empty array
     if not stroke_codes:
         return np.array([], dtype=np.int32)
 
@@ -110,14 +98,16 @@ def flatten_with_separators(
             parts.append(np.array([sep_token], dtype=seq.dtype))
     return np.concatenate(parts)
 
-
+#discretizes the character
 def discretize_character(
     strokes: Sequence[np.ndarray],
     model: Pipeline,
     feature_fn: Optional[FeatureFn] = None,
     sep_token: Optional[int] = None,
 ) -> DiscretizationResult:
+    #discretizes the strokes
     stroke_codes = discretize_strokes(strokes, model, feature_fn=feature_fn)
+    #if a separator token is provided, flatten the stroke codes with separators
     flat_codes = None
     if sep_token is not None:
         flat_codes = flatten_with_separators(stroke_codes, sep_token=sep_token)

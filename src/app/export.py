@@ -6,20 +6,7 @@ from typing import List, Tuple
 
 def save_strokes_to_json(num_strokes, strokes: List[List[Tuple[float, float, float]]], 
                         output_dir: str = "data/raw") -> str:
-    """
-    Save strokes data to a JSON file in data/raw directory.
     
-    Args:
-        strokes: List of strokes, each stroke is a list of (x, y, t) tuples
-                Example: [[(x1, y1, t1), (x2, y2, t2), ...], [(x1, y1, t1), ...]]
-        output_dir: Directory to save the JSON file (default: "data/raw")
-    
-    Returns:
-        Path to the saved JSON file
-    
-    Raises:
-        OSError: If directory creation or file writing fails
-    """
     # Create output directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
     

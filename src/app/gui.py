@@ -1,14 +1,23 @@
 import sys
 import time
-from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QPushButton
+import math
+from PyQt5.QtWidgets import (
+    QApplication,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QMainWindow,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPainter, QPen, QColor, QPainterPath
 from src.app.export import save_strokes_to_json
+from src.pipeline.inference import pipeline_raw_json_to_top_scores
 
 
-class DrawingCanvas(QWidget):
-    """A widget that allows users to draw lines following the mouse cursor."""
-    
+class DrawingCanvas(QWidget):    
     def __init__(self):
         super().__init__()
         self.setMinimumSize(600, 500)
@@ -27,7 +36,7 @@ class DrawingCanvas(QWidget):
         self.pen_width = 2
         
     def mousePressEvent(self, event):
-        """Handle mouse press events - start drawing."""
+        #handes mouse events, when mouse button down, starts drawing
         if event.button() == Qt.LeftButton:
             self.drawing = True
             self.last_point = event.pos()
@@ -40,7 +49,7 @@ class DrawingCanvas(QWidget):
             self.current_path.moveTo(self.last_point)
             
     def mouseMoveEvent(self, event):
-        """Handle mouse move events - draw line following cursor."""
+        #handles mouse events
         if self.drawing and self.stroke_start_time is not None:
             current_point = event.pos()
             # Calculate time elapsed since stroke started
@@ -53,7 +62,7 @@ class DrawingCanvas(QWidget):
             self.update()  # Trigger repaint
             
     def mouseReleaseEvent(self, event):
-        """Handle mouse release events - stop drawing."""
+        #handles mouse button release - stops drawing
         if event.button() == Qt.LeftButton and self.drawing:
             self.drawing = False
             if self.current_stroke:
@@ -66,7 +75,7 @@ class DrawingCanvas(QWidget):
                 self.update()
                 
     def paintEvent(self, event):
-        """Paint all strokes on the canvas."""
+        #puts all the saved strokes on the canvas
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
         
@@ -88,7 +97,7 @@ class DrawingCanvas(QWidget):
             painter.drawPath(self.current_path)
         
     def clear_canvas(self):
-        """Clear all strokes from the canvas."""
+        #clears both canvas and stroke list
         self.strokes = []
         self.current_stroke = []
         self.current_path = None
@@ -97,16 +106,16 @@ class DrawingCanvas(QWidget):
         self.update()
     
     def get_all_strokes(self):
-        """Return all strokes as a list of lists of (x, y, t) tuples."""
+        #returns all strokes
         return self.strokes.copy()
     
     def has_strokes(self):
-        """Check if there are any strokes drawn."""
+        #checks if ther any strokes on the canvas
         return len(self.strokes) > 0
 
 
 class DrawingApp(QMainWindow):
-    """Main application window with drawing canvas."""
+    #main function of the gui, calls all functions and builds the canvas
     
     def __init__(self):
         super().__init__()
@@ -142,17 +151,65 @@ class DrawingApp(QMainWindow):
         top_layout.addStretch()  # Push buttons to the left
         
         main_layout.addLayout(top_layout)
-        
-        # Drawing canvas
+
+        # Canvas + predictions area
+        content_layout = QHBoxLayout()
         self.canvas = DrawingCanvas()
-        main_layout.addWidget(self.canvas)
+        content_layout.addWidget(self.canvas, stretch=4)
+
+        self.prediction_panel = QFrame()
+        self.prediction_panel.setMinimumWidth(220)
+        self.prediction_panel.setStyleSheet(
+            "background-color: black; border: 3px solid #111111; border-radius: 8px;"
+        )
+        panel_layout = QVBoxLayout()
+        self.prediction_panel.setLayout(panel_layout)
+
+        title = QLabel("Top 3 predictions")
+        title.setStyleSheet("color: white; font-size: 16px; font-weight: bold;")
+        panel_layout.addWidget(title)
+
+        self.pred_labels = []
+        for idx in range(3):
+            lbl = QLabel(f"{idx + 1}. -")
+            lbl.setStyleSheet("color: white; font-size: 14px;")
+            panel_layout.addWidget(lbl)
+            self.pred_labels.append(lbl)
+        panel_layout.addStretch()
+
+        content_layout.addWidget(self.prediction_panel, stretch=1)
+        main_layout.addLayout(content_layout)
         
     def clear_canvas(self):
-        """Clear the canvas."""
         self.canvas.clear_canvas()
+
+    def update_predictions(self, top_scores):
+        #returns the top 3 scores of the hmms inferences
+        if top_scores is None:
+            for i in range(3):
+                self.pred_labels[i].setText(f"{i + 1}. unavailable")
+            return
+        if len(top_scores) == 0:
+            for i in range(3):
+                self.pred_labels[i].setText(f"{i + 1}. -")
+            return
+
+        # Convert HMM log-scores to normalized probabilities (softmax over shown top scores).
+        raw_scores = [float(score) for _letter, score in top_scores]
+        max_score = max(raw_scores)
+        exp_scores = [math.exp(score - max_score) for score in raw_scores]
+        denom = sum(exp_scores) if exp_scores else 1.0
+        probs = [value / denom for value in exp_scores]
+
+        for i in range(3):
+            if i < len(top_scores):
+                letter, score = top_scores[i]
+                self.pred_labels[i].setText(f"{i + 1}. {letter}   p={probs[i]:.3f}")
+            else:
+                self.pred_labels[i].setText(f"{i + 1}. -")
     
     def send_letter(self):
-        """Save all strokes and clear canvas for next letter."""
+        #whe clicking send it calls save_strokes_to_json 
         if not self.canvas.has_strokes():
             return  # Nothing to save
         
@@ -165,15 +222,24 @@ class DrawingApp(QMainWindow):
             print(f"Letter saved to {filepath}")
             print(f"Total strokes: {len(all_strokes)}")
             print(f"Total points: {sum(len(stroke) for stroke in all_strokes)}")
+
+            top_scores = pipeline_raw_json_to_top_scores(
+                filepath,
+                parameters_dir="parameters",
+                top_n=3,
+            )
+            self.update_predictions(top_scores)
+            print("Top predictions:", top_scores)
         except Exception as e:
             print(f"Error saving letter: {e}")
+            self.update_predictions(None)
         
         # Clear canvas for next letter
         self.canvas.clear_canvas()
 
 
 def main():
-    """Main function to run the application."""
+    #main function to run the app
     app = QApplication(sys.argv)
     window = DrawingApp()
     window.show()

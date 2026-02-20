@@ -2,7 +2,7 @@ from typing import List
 import numpy as np
 from scipy.signal import savgol_filter
 
-#use of Savgol filter to smoothe rough edges, better result in curvature estimation
+#use of Savgol filter to smoothe rough edges
 def smoothing(strokes: List[np.array], window_length: int = 7, polyorder: int = 2)->List[np.array]:
     smoothed_list = []
 

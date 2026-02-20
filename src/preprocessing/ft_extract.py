@@ -16,16 +16,7 @@ def extract(strokes: List[List[Tuple[float, float, float]]]) -> List[np.ndarray]
 
 
 def extract_from_csv(csv_name: str):
-    """
-    Open a training CSV and return character labels and raw JSON strings.
-
-    Args:
-        csv_name: path to CSV (e.g. 'data/training/cap_a.csv').
-
-    Returns:
-        characters: list of characters (e.g. ['Α', 'Α', ...])
-        json_strings: list of JSON strings from 'char_data' column.
-    """
+    #extracts JSONs from csv, converts them to a dataframe
     df = pd.read_csv(csv_name)
     df = df.dropna(subset=["char_data"])
 
@@ -36,22 +27,7 @@ def extract_from_csv(csv_name: str):
 
 
 def extract_all_from_csv(csv_name: str):
-    """
-    High-level helper:
-    - uses extract_from_csv to read the CSV,
-    - parses the embedded JSON for each row,
-    - extracts the 'strokes' list for each instance,
-    - feeds those strokes into extract() using the same input type.
-
-    Args:
-        csv_name: path to training CSV.
-
-    Returns:
-        List of tuples (char, processed_strokes) where:
-        - char is the character label from the CSV,
-        - processed_strokes is the list returned by extract(strokes)
-            for that character (list of per-stroke arrays).
-    """
+    #extracts all strokes of all letters from the dataframe
     characters, json_strings = extract_from_csv(csv_name)
 
     results = []

@@ -1,32 +1,16 @@
 from __future__ import annotations
 import numpy as np
 
-
+#returns all variables x,y,t of the array into a numpy array
 def xyt_features(stroke: np.ndarray) -> np.ndarray:
-    """
-    Baseline features: use raw (x, y, t).
-
-    Args:
-        stroke: numpy array shape (N, 3) with columns [x, y, t]
-
-    Returns:
-        numpy array shape (N, 3)
-    """
+    
     return stroke[:, :3]
 
-
+#use if time is not needed
 def xy_features(stroke: np.ndarray) -> np.ndarray:
-    """
-    Features using only (x, y) (time is ignored).
-
-    Args:
-        stroke: numpy array shape (N, 3) with columns [x, y, t]
-
-    Returns:
-        numpy array shape (N, 2)
-    """
     return stroke[:, :2]
 
+#use when angle and speed of stroke are needed
 def point_features(stroke: np.ndarray) -> np.ndarray:
     x = stroke[:, 0]
     y = stroke[:, 1]
