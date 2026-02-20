@@ -46,7 +46,7 @@ def plot_preprocessed_characters(results, num_samples=9, cols=3):
 
     
 
-results = extract_all_from_csv("data/training/cap_iota_cleaned.csv")
-plot_preprocessed_characters(results, num_samples=65, cols=6)
+results = extract_all_from_csv("data/training/cap_a_cleaned.csv")
+plot_preprocessed_characters(results, num_samples=60, cols=6)
 
 
