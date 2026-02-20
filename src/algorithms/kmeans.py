@@ -1,9 +1,9 @@
 from __future__ import annotations
-
 from dataclasses import dataclass
 from typing import Callable, Iterable, List, Optional, Sequence, Tuple
-
 import numpy as np
+from sklearn.pipeline import Pipeline, make_pipeline
+from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 
 
@@ -22,6 +22,11 @@ class DiscretizationResult:
 
     stroke_codes: List[np.ndarray]
     flat_codes: Optional[np.ndarray] = None
+    
+@dataclass(frozen=True)
+class Codebook:
+    scaler: StandardScaler
+    kmeans: KMeans
 
 
 def _iter_stroke_features(
@@ -44,16 +49,10 @@ def build_codebook(
     n_clusters: int = 64,
     feature_fn: Optional[FeatureFn] = None,
     random_state: int = 0,
-) -> KMeans:
+) -> Pipeline:
     """
-    Fit a single KMeans codebook over all points (across all characters).
-
-    Args:
-        results: output of extract_all_from_csv: List[(char, processed_strokes)]
-                where processed_strokes is List[np.ndarray] of shape (Ni, 3).
-        n_clusters: number of discrete symbols to learn.
-        feature_fn: maps a stroke (Ni,3) -> features (Ni,F). Defaults to x,y,t.
-        random_state: for reproducibility.
+    Fit a single codebook (StandardScaler + KMeans) over all points.
+    Returns a sklearn Pipeline so scaling is applied consistently at predict time too.
     """
     if feature_fn is None:
         feature_fn = lambda s: s[:, :3]
@@ -64,18 +63,22 @@ def build_codebook(
 
     X = np.vstack(feats_list)
 
-    km = KMeans(n_clusters=n_clusters, random_state=random_state)
-    km.fit(X)
-    return km
+    model = make_pipeline(
+        StandardScaler(),
+        KMeans(n_clusters=n_clusters, random_state=random_state, n_init=10),
+    )
+    model.fit(X)
+    return model
 
 
 def discretize_strokes(
     strokes: Sequence[np.ndarray],
-    kmeans: KMeans,
+    model: Pipeline,
     feature_fn: Optional[FeatureFn] = None,
 ) -> List[np.ndarray]:
     """
-    Discretize each stroke into an ordered sequence of cluster IDs.
+    Discretize each stroke into an ordered sequence of cluster IDs
+    using the same scaling + kmeans model.
     """
     if feature_fn is None:
         feature_fn = lambda s: s[:, :3]
@@ -85,7 +88,7 @@ def discretize_strokes(
         if stroke is None or len(stroke) == 0:
             continue
         X = feature_fn(stroke)
-        codes = kmeans.predict(X)
+        codes = model.predict(X)  # scaling happens inside the pipeline
         stroke_codes.append(codes.astype(np.int32, copy=False))
     return stroke_codes
 
@@ -110,14 +113,11 @@ def flatten_with_separators(
 
 def discretize_character(
     strokes: Sequence[np.ndarray],
-    kmeans: KMeans,
+    model: Pipeline,
     feature_fn: Optional[FeatureFn] = None,
     sep_token: Optional[int] = None,
 ) -> DiscretizationResult:
-    """
-    Discretize a single character's strokes, optionally returning a flat sequence with separators.
-    """
-    stroke_codes = discretize_strokes(strokes, kmeans, feature_fn=feature_fn)
+    stroke_codes = discretize_strokes(strokes, model, feature_fn=feature_fn)
     flat_codes = None
     if sep_token is not None:
         flat_codes = flatten_with_separators(stroke_codes, sep_token=sep_token)

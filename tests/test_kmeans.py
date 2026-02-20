@@ -3,22 +3,22 @@ from src.preprocessing.ft_extract import extract_all_from_csv
 from src.algorithms.kmeans import build_codebook, discretize_character
 from src.features.point_features import point_features
 
-results = extract_all_from_csv("data/training/cap_a_cleaned.csv")
+results = extract_all_from_csv("data/training/lower_a_cleaned.csv")
 
-# First element: (char, processed_strokes)
-char, processed_strokes = results[0]
-
-
-# --- Discretization demo (KMeans + stroke separators) ---
-# Build one global codebook over all characters/points
 K = 12
 SEP = K  # separator token that marks stroke boundaries in the flat sequence
+model = build_codebook(results, n_clusters=K, feature_fn=point_features, random_state=0)
+for char, processed_strokes in results:
 
-kmeans = build_codebook(results, n_clusters=K, feature_fn=point_features, random_state=0)
-disc = discretize_character(processed_strokes, kmeans, feature_fn=point_features, sep_token=SEP)
+    disc = discretize_character(
+        processed_strokes,
+        model,
+        feature_fn=point_features,
+        sep_token=SEP
+    )
 
 print(f"Discrete strokes: {len(disc.stroke_codes)}")
-print("First stroke codes (first 25):", disc.stroke_codes[0][:25] if disc.stroke_codes else [])
+print("First stroke codes (first 25):", disc.stroke_codes[0][:64] if disc.stroke_codes else [])
 print("Flat sequence length:", len(disc.flat_codes) if disc.flat_codes is not None else 0)
 print("Separator token:", SEP)
 
